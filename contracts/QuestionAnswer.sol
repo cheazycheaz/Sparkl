@@ -1,10 +1,12 @@
+// SPDX-License-Identifier: MIT
+
 /* This smart contract provides the basic functionality for storing and retrieving 
 question and answer metadata on the Base blockchain. The actual content (text, images, etc.)
 associated with the questions and answers are stored on Banyan, and this contract just stores
 the Banyan file IDs as references.
 */
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.3;
 
 contract QuestionAnswer {
     struct Question {
