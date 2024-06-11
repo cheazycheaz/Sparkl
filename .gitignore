@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 node_modules
 .env
+.env.local
 
 # Hardhat files
 /cache

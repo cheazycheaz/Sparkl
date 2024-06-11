@@ -1069,12 +1069,12 @@
     "84532": {
       "events": {},
       "links": {},
-      "address": "0x32a5e7219f026C4156de4B99F5CBB33b514eD301",
-      "transactionHash": "0x3c5275ae7961475e367154108b3aa54cb17f3f1b553140367f27a6ccb1f311b9"
+      "address": "0xd1084420C7BD54Def0EB8f471d2D2b5a8B057Ad9",
+      "transactionHash": "0xfd5b9a092e7a4ce9bfd6b151fa5c648f4148b96ab8e7cbd0dc1760003a163423"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2024-06-09T22:45:45.615Z",
+  "updatedAt": "2024-06-11T06:08:55.725Z",
   "networkType": "ethereum",
   "devdoc": {
     "kind": "dev",

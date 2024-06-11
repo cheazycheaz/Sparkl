@@ -1,9 +1,11 @@
 import React from 'react';
 import Web3 from 'web3';
 import axios from 'axios';
+import privyClient from './privy.js';
+import { ethers } from 'ethers';
 
 const web3 = new Web3('https://sepolia.base.org');
-const contractAddress = '0xb00a0eD06cA66701158eCAEdf4E2f2D5eF9B451b';
+const contractAddress = '0xD8d2fb6609C22e1f3B5Bb17aD03671708d2c6583';
 const contractABI = [
   {
     "anonymous": false,
