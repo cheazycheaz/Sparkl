@@ -106,14 +106,15 @@ contract QuestionAnswer {
         require(bytes(subheading).length <= 400, "Subheading exceeds character limit");
 
         questionCount++;
-        questions[questionCount].id = questionCount;
-        questions[questionCount].heading = heading;
-        questions[questionCount].subheading = subheading;
-        questions[questionCount].banyanFileId = banyanFileId;
-        questions[questionCount].timestamp = block.timestamp;
-        questions[questionCount].views = 0;
-        questions[questionCount].bountyAmount = 0;
-
+        Question storage newQuestion = questions[questionCount];
+        newQuestion.id = questionCount;
+        newQuestion.heading = heading;
+        newQuestion.subheading = subheading;
+        newQuestion.banyanFileId = banyanFileId;
+        newQuestion.timestamp = block.timestamp;
+        newQuestion.views = 0;
+        newQuestion.bountyAmount = 0;
+        
         emit QuestionPosted(questionCount, heading, subheading, banyanFileId, block.timestamp);
     }
 
@@ -124,15 +125,7 @@ contract QuestionAnswer {
         bool isDraft
     ) public userExists(msg.sender) questionExists(questionId) {
         answerCount++;
-        answers[answerCount].id = answerCount;
-        answers[answerCount].questionId = questionId;
-        answers[answerCount].banyanFileId = banyanFileId;
-        answers[answerCount].author = msg.sender;
-        answers[answerCount].timestamp = block.timestamp;
-        answers[answerCount].views = 0;
-        answers[answerCount].likes = 0;
-        answers[answerCount].isDraft = isDraft;
-        answers[answerCount].hasBounty = questions[questionId].bountyAmount > 0;
+        answers[answerCount] = Answer(answerCount, questionId, banyanFileId, msg.sender, block.timestamp, 0, 0, isDraft, questions[questionId].bountyAmount > 0);
 
         userAnswers[msg.sender].push(answerCount);
         questionAnswers[questionId].push(answerCount);
@@ -149,9 +142,10 @@ contract QuestionAnswer {
     // Function to propose a bounty for a question
     function proposeBounty(uint256 questionId, uint256 amount) public payable userExists(msg.sender) questionExists(questionId) {
         require(msg.value == amount, "Amount mismatch with sent value");
-        questions[questionId].bounties[msg.sender] += amount;
-        questions[questionId].bountyAmount += amount;
-        questions[questionId].bountyProposers.push(msg.sender);
+        Question storage q = questions[questionId];
+        q.bounties[msg.sender] += amount;
+        q.bountyAmount += amount;
+        q.bountyProposers.push(msg.sender);
         emit BountyProposed(questionId, msg.sender, amount);
     }
 

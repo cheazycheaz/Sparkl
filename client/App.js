@@ -1,7 +1,7 @@
 import React from 'react';
 import Web3 from 'web3';
 import axios from 'axios';
-import privyClient from './privy.js';
+import privyClient from './client/src/utils/privy.js';
 import { ethers } from 'ethers';
 
 const web3 = new Web3('https://sepolia.base.org');
