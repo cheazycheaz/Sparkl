@@ -1,296 +1,63 @@
-import React from 'react';
-import Web3 from 'web3';
-import axios from 'axios';
-import { PrivyProvider, usePrivy } from '@privy-io/react-auth';
-import { ethers } from 'ethers';
-import { BrowserRouter as Router, Route, Link, Routes } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import WalletLogin from './Components/WalletLogin';
+import Profile from './Components/Profile';
+import QuestionFeed from './Components/QuestionFeed';
+import PostQuestion from './Components/PostQuestion';
+import PostAnswer from './Components/PostAnswer';
+import ProposeBounty from './Components/ProposeBounty';
+import AnswerList from './Components/AnswerList';
 import './App.css';
-import Profile from './Profile';
-import Question from './Question';
-import Answer from './Answer';
-import QuestionList from './QuestionList';
-import QuestionDetail from './QuestionDetail';
-import Home from './Home';
-import logo from './assets/sparkl-logo.png';
-
-const web3 = new Web3('https://sepolia.base.org');
-const contractAddress = '0x80AE34024157d3d7aa590D2EdBD7F7083fD2e064';
-const contractABI = [
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "questionId",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "answerId",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "banyanFileId",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "author",
-        "type": "address"
-      }
-    ],
-    "name": "AnswerAdded",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "questionId",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "banyanFileId",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "QuestionAdded",
-    "type": "event"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "answers",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "banyanFileId",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "author",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "questionCount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "questions",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "banyanFileId",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "timestamp",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "answerCount",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_banyanFileId",
-        "type": "string"
-      }
-    ],
-    "name": "addQuestion",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_questionId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "_banyanFileId",
-        "type": "string"
-      }
-    ],
-    "name": "addAnswer",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_questionId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_answerId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getQuestion",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_questionId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_answerId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getAnswer",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
-const contract = new web3.eth.Contract(contractABI, contractAddress);
-
-const privyAppId = 'clx9jtfgm08in7t5z52xwr2oy';
 
 function App() {
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+        } catch (error) {
+          console.error('User denied account access');
+        }
+      } else {
+        console.error('Non-Ethereum browser detected. You should consider trying MetaMask!');
+      }
+    };
+
+    checkConnection();
+  }, []);
+
   return (
-    <PrivyProvider appId={privyAppId}>
-      <Router>
-        <div className="min-h-screen bg-secondary text-gray-900">
-          <header className="w-full py-4 bg-white shadow-lg fixed top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <img src={logo} alt="Sparkl Logo" className="h-8" />
-                <nav className="flex space-x-4">
-                  <Link to="/" className="text-primary font-semibold">Home</Link>
-                  <Link to="/profile" className="text-primary font-semibold">Profile</Link>
-                  <Link to="/question" className="text-primary font-semibold">Ask a Question</Link>
-                  <Link to="/answer" className="text-primary font-semibold">Answer a Question</Link>
-                </nav>
-              </div>
-              <div className="flex items-center space-x-4">
-                <input type="text" placeholder="Search..." className="border rounded-full px-4 py-1" />
-                <img src="https://via.placeholder.com/30" alt="Profile" className="h-8 w-8 rounded-full" />
-              </div>
+    <Router>
+      <div className="App">
+        <header className="App-header">
+          <nav>
+            <ul>
+              <li><Link to="/">Home</Link></li>
+              <li><Link to="/login">Login</Link></li>
+              <li><Link to="/profile">Profile</Link></li>
+              <li><Link to="/feed">Questions</Link></li>
+              <li><Link to="/post-question">Post Question</Link></li>
+              <li><Link to="/propose-bounty">Propose Bounty</Link></li>
+            </ul>
+          </nav>
+        </header>
+        <Routes>
+          <Route path="/login" element={<WalletLogin />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/feed" element={<QuestionFeed />} />
+          <Route path="/post-question" element={<PostQuestion />} />
+          <Route path="/post-answer/:questionId" element={<PostAnswer />} />
+          <Route path="/propose-bounty/:questionId" element={<ProposeBounty />} />
+          <Route path="/answers/:questionId" element={<AnswerList />} />
+          <Route path="/" element={
+            <div>
+              <h1>Welcome to Sparkl</h1>
+              <p>Your on-chain question and answer platform.</p>
             </div>
-          </header>
-          <main className="pt-16">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/question" element={<Question />} />
-              <Route path="/answer" element={<Answer />} />
-            </Routes>
-          </main>
-        </div>
-      </Router>
-    </PrivyProvider>
+          } />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
