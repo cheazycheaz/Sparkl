@@ -1,4 +1,6 @@
 import { PrivyClient } from '@privy-io/react-auth';
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const client = new PrivyClient({
   appId: 'clx9jtfgm08in7t5z52xwr2oy'

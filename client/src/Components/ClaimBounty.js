@@ -1,6 +1,8 @@
 // sparkl/client/src/components/ClaimBounty.js
 import React, { useState } from 'react';
 import client from '../privyConfig';
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const ClaimBounty = ({ questionId, answerId }) => {
   const [claimer, setClaimer] = useState('');

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import client from '../privyConfig';
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const QuestionDetails = () => {
   const { questionId } = useParams();

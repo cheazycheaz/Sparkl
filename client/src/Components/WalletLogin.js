@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const WalletLogin = () => {
   const { login, user } = usePrivy();

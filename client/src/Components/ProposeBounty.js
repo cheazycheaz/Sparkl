@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { ethers } from 'ethers';
 import { getContract } from '../contracts';
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const ProposeBounty = ({ questionId }) => {
     const [amount, setAmount] = useState('');

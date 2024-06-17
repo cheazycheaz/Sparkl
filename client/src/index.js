@@ -3,6 +3,12 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import { PrivyProvider } from '@privy-io/react-auth';
 import App from './App';
+import 'process/browser';
+import { Buffer } from 'buffer';
+
+
+
+
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 

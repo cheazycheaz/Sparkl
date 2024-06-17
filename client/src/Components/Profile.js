@@ -1,6 +1,8 @@
 // sparkl/client/src/components/Profile.js
 import React, { useState } from 'react';
 import client from '../privyConfig';
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const Profile = () => {
   const [profile, setProfile] = useState({

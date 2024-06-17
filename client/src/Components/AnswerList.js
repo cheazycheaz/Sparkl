@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getContract } from '../contracts';
 import { useParams } from 'react-router-dom';
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const AnswerList = () => {
   const { questionId } = useParams();

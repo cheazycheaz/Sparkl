@@ -1,82 +1,75 @@
 import React, { useState } from 'react';
-import { getContract } from '../contracts'; // Import contract.js
+import axios from 'axios';
+import { getContract } from '../contracts'; 
+import 'process/browser';
+import { Buffer } from 'buffer';
 
 const PostQuestion = () => {
-    const [question, setQuestion] = useState({
-        heading: '',
-        subheading: '',
-        content: '', // This will be uploaded to Banyan
-    });
-    const [success, setSuccess] = useState(false);
-    const [error, setError] = useState(null);
+  const [question, setQuestion] = useState('');
+  const [details, setDetails] = useState('');
+  const [error, setError] = useState('');
 
-    const handleChange = (e) => {
-        setQuestion({ ...question, [e.target.name]: e.target.value });
+  const postQuestionToBlockchain = async (question, ipfsHash) => {
+    try {
+      const contract = getContract();
+      await contract.postQuestion(question, ipfsHash);
+      console.log('Question posted to blockchain');
+    } catch (error) {
+      console.error('Error posting question to blockchain:', error);
+      setError('Error posting question to blockchain');
+    }
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    const data = {
+      question,
+      details,
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            // Post question with content to Banyan and blockchain
-            const banyanFileId = await uploadContentToBanyan(question.content);
-            const contract = getContract();
-            const tx = await contract.postQuestion(question.heading, question.subheading, banyanFileId);
-            await tx.wait();
-            setSuccess(true);
-        } catch (error) {
-            console.error('Error posting question:', error);
-            setError(error.message);
-        }
-    };
+    try {
+      const response = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.PINATA_JWT}`, // Using JWT is recommended
+        },
+      });
 
-    const uploadContentToBanyan = async (content) => {
-        try {
-            const response = await fetch('https://api.banyan.com/upload', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ content }),
-            });
+      const ipfsHash = response.data.IpfsHash;
+      console.log('IPFS Hash:', ipfsHash);
 
-            const data = await response.json();
-            return data.contentId; // Assuming the response contains the content ID
-        } catch (error) {
-            throw new Error('Error uploading content to Banyan');
-        }
-    };
+      // Now store the IPFS hash on the blockchain
+      await postQuestionToBlockchain(question, ipfsHash);
+    } catch (error) {
+      console.error('Error posting question:', error);
+      setError('Error uploading content to Pinata');
+    }
+  };
 
-    return (
-        <div className="post-question">
-            <h2>Post a New Question</h2>
-            <form onSubmit={handleSubmit}>
-                <input
-                    name="heading"
-                    value={question.heading}
-                    onChange={handleChange}
-                    placeholder="Heading"
-                    required
-                />
-                <input
-                    name="subheading"
-                    value={question.subheading}
-                    onChange={handleChange}
-                    placeholder="Subheading"
-                    required
-                />
-                <textarea
-                    name="content"
-                    value={question.content}
-                    onChange={handleChange}
-                    placeholder="Question Content"
-                    required
-                />
-                <button type="submit">Post Question</button>
-            </form>
-            {error && <p style={{ color: 'red' }}>{error}</p>}
-            {success && <p style={{ color: 'green' }}>Question posted successfully!</p>}
-        </div>
-    );
+  return (
+    <div>
+      <h1>Post a New Question</h1>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Question"
+          required
+        />
+        <textarea
+          value={details}
+          onChange={(e) => setDetails(e.target.value)}
+          placeholder="Details"
+          required
+        />
+        <button type="submit">Post Question</button>
+      </form>
+      {error && <p>{error}</p>}
+    </div>
+  );
 };
 
 export default PostQuestion;

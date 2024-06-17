@@ -8,6 +8,12 @@ import PostAnswer from './Components/PostAnswer';
 import ProposeBounty from './Components/ProposeBounty';
 import AnswerList from './Components/AnswerList';
 import './App.css';
+import 'process/browser';
+import { Buffer } from 'buffer';
+
+
+
+
 
 function App() {
   useEffect(() => {
