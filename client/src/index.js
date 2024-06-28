@@ -6,10 +6,6 @@ import App from './App';
 import 'process/browser';
 import { Buffer } from 'buffer';
 
-
-
-
-
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
@@ -21,7 +17,7 @@ root.render(
         appearance: {
           theme: 'light',
           accentColor: '#676FFF',
-          logo: 'https://ibb.co/84S3Bfg', // Your logo URL
+          logo: '/Sparkl.png', 
         },
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',

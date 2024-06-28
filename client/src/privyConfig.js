@@ -6,6 +6,8 @@ const client = new PrivyClient({
   appId: 'clx9jtfgm08in7t5z52xwr2oy'
 });
 
+
+
 // Mock implementation of getQuestions and getQuestionDetails functions
 client.getQuestions = async () => {
   return [

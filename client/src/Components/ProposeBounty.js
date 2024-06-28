@@ -1,45 +1,57 @@
 import React, { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { ethers } from 'ethers';
 import { getContract } from '../contracts';
 import 'process/browser';
-import { Buffer } from 'buffer';
+import { usePrivy } from '@privy-io/react-auth';
 
-const ProposeBounty = ({ questionId }) => {
-    const [amount, setAmount] = useState('');
-    const [message, setMessage] = useState('');
+const ProposeBounty = () => {
+  const { questionId } = useParams();
+  const [amount, setAmount] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState(null);
+  const { user } = usePrivy();
 
-    const handleProposeBounty = async () => {
-        try {
-            const contract = getContract();
+  const handleProposeBounty = async () => {
+    setError(null);
+    setMessage('');
 
-            // Propose a bounty
-            const tx = await contract.proposeBounty(questionId, ethers.utils.parseEther(amount), {
-                value: ethers.utils.parseEther(amount),
-            });
+    try {
+      if (!user) {
+        throw new Error("Please login to propose a bounty");
+      }
 
-            // Wait for the transaction to be mined
-            await tx.wait();
+      const contract = await getContract();
+      const amountInWei = ethers.utils.parseEther(amount);
 
-            setMessage('Bounty proposed successfully!');
-        } catch (error) {
-            console.error('Error proposing bounty:', error);
-            setMessage('Failed to propose bounty.');
-        }
-    };
+      const tx = await contract.proposeBounty(questionId, amountInWei, {
+        value: amountInWei,
+      });
 
-    return (
-        <div>
-            <h2>Propose Bounty for Question {questionId}</h2>
-            <input
-                type="text"
-                placeholder="Amount in ETH"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-            />
-            <button onClick={handleProposeBounty}>Propose Bounty</button>
-            {message && <p>{message}</p>}
-        </div>
-    );
+      await tx.wait();
+      setMessage('Bounty proposed successfully!');
+      setAmount('');
+    } catch (error) {
+      console.error('Error proposing bounty:', error);
+      setError(error.message);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto mt-10">
+      <h2 className="text-2xl font-bold mb-6">Propose Bounty for Question {questionId}</h2>
+      <input
+        type="text"
+        placeholder="Amount in ETH"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        className="w-full p-2 mb-4 border rounded"
+      />
+      <button onClick={handleProposeBounty} className="bg-green-500 text-white p-2 rounded hover:bg-green-600">Propose Bounty</button>
+      {message && <p className="text-green-500 mt-4">{message}</p>}
+      {error && <p className="text-red-500 mt-4">{error}</p>}
+    </div>
+  );
 };
 
 export default ProposeBounty;

@@ -13,14 +13,19 @@ pragma solidity ^0.8.3;
 contract QuestionAnswer {
     struct Question {
         uint256 id;
-        string heading;
-        string subheading;
+        string question;
+        string details;
         string ipfsHash;
         uint256 timestamp;
         uint256 views;
         uint256 bountyAmount;
         address[] bountyProposers;
-        mapping(address => uint256) bounties;
+        mapping(address => Bounty) bounties;
+    }
+
+    struct Bounty {
+        uint256 amount;
+        uint256 proposedAt;
     }
 
     struct Answer {
@@ -31,8 +36,6 @@ contract QuestionAnswer {
         uint256 timestamp;
         uint256 views;
         uint256 likes;
-        bool isDraft;
-        bool hasBounty;
     }
 
     struct User {
@@ -96,26 +99,44 @@ contract QuestionAnswer {
         users[msg.sender] = User(msg.sender, name, bio, twitterLink, websiteLink, profilePicture, username, occupation, 0, 0, block.timestamp);
     }
 
-    // Function to post a new question
-    function postQuestion(
-        string memory heading,
-        string memory subheading,
-        string memory ipfsHash
-    ) public userExists(msg.sender) {
-        require(bytes(heading).length <= 150, "Heading exceeds character limit");
-        require(bytes(subheading).length <= 400, "Subheading exceeds character limit");
+    uint256 public constant BOUNTY_DURATION = 2 weeks;
 
+    // Function to post a new question
+   function postQuestion(string memory _question, string memory _details, string memory _ipfsHash) public {
         questionCount++;
         Question storage newQuestion = questions[questionCount];
         newQuestion.id = questionCount;
-        newQuestion.heading = heading;
-        newQuestion.subheading = subheading;
-        newQuestion.ipfsHash = ipfsHash;
+        newQuestion.question = _question;
+        newQuestion.details = _details;
+        newQuestion.ipfsHash = _ipfsHash;
         newQuestion.timestamp = block.timestamp;
-        newQuestion.views = 0;
-        newQuestion.bountyAmount = 0;
         
-        emit QuestionPosted(questionCount, heading, subheading, ipfsHash, block.timestamp);
+        emit QuestionPosted(questionCount, _question, _details, _ipfsHash, block.timestamp);
+    }
+
+    // Functions to propose/withdraw a new bounty 
+    function proposeBounty(uint256 _questionId) public payable {
+        require(msg.value > 0, "Bounty amount must be greater than 0");
+        Question storage question = questions[_questionId];
+        question.bountyAmount += msg.value;
+        question.bounties[msg.sender] = Bounty(msg.value, block.timestamp);
+        question.bountyProposers.push(msg.sender);
+        
+        emit BountyProposed(_questionId, msg.sender, msg.value);
+    }
+
+    function withdrawBounty(uint256 _questionId) public {
+        Question storage question = questions[_questionId];
+        Bounty memory bounty = question.bounties[msg.sender];
+        require(bounty.amount > 0, "No bounty to withdraw");
+        require(block.timestamp > bounty.proposedAt + BOUNTY_DURATION, "Bounty still active");
+        
+        uint256 amount = bounty.amount;
+        delete question.bounties[msg.sender];
+        question.bountyAmount -= amount;
+        payable(msg.sender).transfer(amount);
+        
+        emit BountyWithdrawn(_questionId, msg.sender, amount);
     }
 
     // Function to post a new answer

@@ -1,67 +1,76 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import { usePrivy } from '@privy-io/react-auth';
+import { signInWithPrivy, auth } from './firebase'; 
+import { signOut } from 'firebase/auth';
 import WalletLogin from './Components/WalletLogin';
 import Profile from './Components/Profile';
-import QuestionFeed from './Components/QuestionFeed';
 import PostQuestion from './Components/PostQuestion';
 import PostAnswer from './Components/PostAnswer';
 import ProposeBounty from './Components/ProposeBounty';
 import AnswerList from './Components/AnswerList';
+import MainFeed from './Components/MainFeed';
 import './App.css';
-import 'process/browser';
-import { Buffer } from 'buffer';
-
-
-
-
 
 function App() {
-  useEffect(() => {
-    const checkConnection = async () => {
-      if (window.ethereum) {
-        try {
-          await window.ethereum.request({ method: 'eth_requestAccounts' });
-        } catch (error) {
-          console.error('User denied account access');
-        }
-      } else {
-        console.error('Non-Ethereum browser detected. You should consider trying MetaMask!');
-      }
-    };
+  const { user, logout } = usePrivy();
 
-    checkConnection();
-  }, []);
+  useEffect(() => {
+    if (user) {
+      signInWithPrivy(user.id).then(success => {
+        if (success) {
+          console.log("Successfully signed in with Firebase");
+        } else {
+          console.error("Failed to sign in with Firebase");
+        }
+      });
+    }
+  }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      // Sign out from Privy
+      await logout();
+      
+      // Sign out from Firebase
+      await signOut(auth);
+      
+      console.log("Successfully logged out from both Privy and Firebase");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
 
   return (
     <Router>
       <div className="App">
-        <header className="App-header">
-          <nav>
-            <ul>
-              <li><Link to="/">Home</Link></li>
-              <li><Link to="/login">Login</Link></li>
-              <li><Link to="/profile">Profile</Link></li>
-              <li><Link to="/feed">Questions</Link></li>
-              <li><Link to="/post-question">Post Question</Link></li>
-              <li><Link to="/propose-bounty">Propose Bounty</Link></li>
+        <header className="bg-white shadow-md">
+          <nav className="container mx-auto px-6 py-3">
+            <ul className="flex justify-between items-center">
+              <li><Link to="/" className="text-xl font-bold text-gray-800">Sparkl</Link></li>
+              {user ? (
+                <>
+                  <li><Link to="/profile" className="text-gray-600 hover:text-gray-800">Profile</Link></li>
+                  <li><Link to="/post-question" className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Add Question</Link></li>
+                  <li><button onClick={handleLogout} className="text-gray-600 hover:text-gray-800">Logout</button></li>
+                </>
+              ) : (
+                <li><WalletLogin /></li>
+              )}
             </ul>
           </nav>
         </header>
-        <Routes>
-          <Route path="/login" element={<WalletLogin />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/feed" element={<QuestionFeed />} />
-          <Route path="/post-question" element={<PostQuestion />} />
-          <Route path="/post-answer/:questionId" element={<PostAnswer />} />
-          <Route path="/propose-bounty/:questionId" element={<ProposeBounty />} />
-          <Route path="/answers/:questionId" element={<AnswerList />} />
-          <Route path="/" element={
-            <div>
-              <h1>Welcome to Sparkl</h1>
-              <p>Your on-chain question and answer platform.</p>
-            </div>
-          } />
-        </Routes>
+        <main className="container mx-auto px-6 py-8">
+          <Routes>
+            <Route path="/" element={<MainFeed />} />
+            <Route path="/login" element={<WalletLogin />} />
+            <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
+            <Route path="/post-question" element={user ? <PostQuestion /> : <Navigate to="/login" />} />
+            <Route path="/post-answer/:questionId" element={user ? <PostAnswer /> : <Navigate to="/login" />} />
+            <Route path="/propose-bounty/:questionId" element={user ? <ProposeBounty /> : <Navigate to="/login" />} />
+            <Route path="/answers/:questionId" element={<AnswerList />} />
+          </Routes>
+        </main>
       </div>
     </Router>
   );
