@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getContract } from '../contracts';
-import 'process/browser';
 import { usePrivy } from '@privy-io/react-auth';
+import axios from 'axios';
+import { ethers } from 'ethers';
 
 const PostAnswer = () => {
   const { questionId } = useParams();
@@ -16,21 +17,59 @@ const PostAnswer = () => {
     setError(null);
     setSuccess(false);
 
+    if (!user) {
+      setError("Please login to post an answer");
+      return;
+    }
+
     try {
-      if (!user) {
-        throw new Error("Please login to post an answer");
+      // Store answer content on IPFS
+      const ipfsResponse = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+        pinataContent: { content: answer }
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'pinata_api_key': process.env.REACT_APP_PINATA_KEY,
+          'pinata_secret_api_key': process.env.REACT_APP_PINATA_SECRET,
+        }
+      });
+
+      const ipfsHash = ipfsResponse.data.IpfsHash;
+
+      // Post answer to blockchain
+      const contract = await getContract(user.wallet.provider);
+
+      console.log('Estimating gas for postAnswer...');
+      let gasLimit;
+      try {
+        gasLimit = await contract.estimateGas.postAnswer(questionId, ipfsHash);
+        console.log('Estimated gas limit:', gasLimit.toString());
+      } catch (gasEstimateError) {
+        console.error('Gas estimation error:', gasEstimateError);
+        throw new Error('Failed to estimate gas. The transaction may fail or the contract function might be reverting.');
       }
 
-      const contract = await getContract();
-      const tx = await contract.postAnswer(questionId, answer, false);
-      await tx.wait();
+      console.log('Sending transaction...');
+      const tx = await contract.postAnswer(questionId, ipfsHash, {
+        gasLimit: gasLimit.mul(ethers.BigNumber.from(12)).div(ethers.BigNumber.from(10)) // 20% buffer
+      });
+      console.log('Transaction:', tx);
+
+      console.log('Waiting for transaction confirmation...');
+      const receipt = await tx.wait();
+      console.log('Transaction receipt:', receipt);
+
       setSuccess(true);
       setAnswer('');
     } catch (error) {
       console.error('Error posting answer:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to post answer. Please try again.');
     }
   };
+
+  if (!user) {
+    return <p>Please log in to post an answer.</p>;
+  }
 
   return (
     <div className="max-w-2xl mx-auto mt-10">

@@ -1,75 +1,50 @@
 import { ethers } from "ethers";
-import abi from './QuestionAnswer.json'; 
-import 'process/browser';
+import abi from './QuestionAnswer.json';
 
-const contractAddress = "0x116074D3f9a94826300fd3A55A6f49eFcC4eD7a0";
+const contractAddress = "0x14D0AE3f6C7e9469450d77719EF8ba0cf8eA4F70";
+const baseSepoliaChainId = '0x14a34';
 
-// Function to add or switch to the Base Sepolia network
-const switchNetwork = async () => {
-  const baseSepoliaChainId = '0x14A34'; // Chain ID for Base Sepolia in hexadecimal (84532 in decimal)
-  const networkData = {
-    chainId: baseSepoliaChainId,
-    chainName: 'Base Sepolia',
-    rpcUrls: ['https://sepolia.base.org'], // Replace with actual RPC URL
-    nativeCurrency: {
-      name: 'ETH',
-      symbol: 'ETH',
-      decimals: 18
-    },
-    blockExplorerUrls: ['https://sepolia.base.org/explorer'] // Replace with actual block explorer URL
-  };
-
+const switchNetwork = async (provider) => {
   try {
-    // Request to switch to the network
-    await window.ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: baseSepoliaChainId }]
-    });
+    const network = await provider.getNetwork();
+    if (network.chainId === parseInt(baseSepoliaChainId, 16)) {
+      console.log('Already on Base Sepolia network');
+      return;
+    }
+
+    await provider.send('wallet_switchEthereumChain', [{ chainId: baseSepoliaChainId }]);
   } catch (switchError) {
-    // This error code indicates that the chain has not been added to MetaMask
     if (switchError.code === 4902) {
       try {
-        // Request to add the network
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [networkData]
-        });
+        await provider.send('wallet_addEthereumChain', [{
+          chainId: baseSepoliaChainId,
+          chainName: 'Base Sepolia',
+          nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+          rpcUrls: ['https://sepolia.base.org'],
+          blockExplorerUrls: ['https://sepolia.basescan.org']
+        }]);
       } catch (addError) {
-        throw new Error('Failed to add Base Sepolia network');
+        console.error('Failed to add Base Sepolia network', addError);
       }
     } else {
-      throw new Error('Failed to switch to Base Sepolia network');
+      console.error('Failed to switch to Base Sepolia network', switchError);
     }
   }
 };
 
-// Function to get the provider
-const getProvider = async () => {
-  if (typeof window.ethereum !== 'undefined') {
-    // Request account access if needed
+export const getContract = async (privyProvider) => {
+  let provider;
+  if (privyProvider) {
+    provider = new ethers.providers.Web3Provider(privyProvider, "any");
+  } else if (typeof window.ethereum !== 'undefined') {
     await window.ethereum.request({ method: 'eth_requestAccounts' });
-
-    // Switch to the Base Sepolia network
-    await switchNetwork();
-
-    // Set up the provider
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-
-    // Ensure the network is Base Sepolia
-    const network = await provider.getNetwork();
-    if (network.chainId !== 84532) { // Replace with the correct chainId for Base Sepolia
-      throw new Error('Failed to switch to Base Sepolia network');
-    }
-
-    return provider;
+    provider = new ethers.providers.Web3Provider(window.ethereum, "any");
   } else {
-    // Fallback to a JsonRpcProvider if MetaMask is not available
-    return new ethers.providers.JsonRpcProvider(process.env.REACT_APP_BASE_SEPOLIA_RPC_URL);
+    console.warn('No wallet detected. Falling back to JSON-RPC provider.');
+    provider = new ethers.providers.JsonRpcProvider(process.env.REACT_APP_BASE_SEPOLIA_RPC_URL);
   }
-};
 
-export const getContract = async () => {
-  const provider = await getProvider();
+  await switchNetwork(provider);
   const signer = provider.getSigner();
-  return new ethers.Contract(contractAddress, abi.abi, signer); // Use `abi.abi` to reference the ABI
+  return new ethers.Contract(contractAddress, abi.abi, signer);
 };

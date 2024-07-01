@@ -3,16 +3,45 @@
 @tailwind utilities;
 
 
+@import url('https://fonts.googleapis.com/css2?family=Satoshi:wght@300;400;500;700&display=swap');
+
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  font-family: 'Satoshi', sans-serif;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+.menu-bar {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.menu-bar button {
+  background: #f5f5f5;
+  border: none;
+  padding: 0.5rem;
+  margin: 0.2rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.menu-bar button.is-active {
+  background: #6666ff;
+  color: white;
+}
+
+.menu-bar button:hover {
+  background: #e0e0e0;
+}
+
+.rich-text-editor {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1rem;
+  background: white;
 }

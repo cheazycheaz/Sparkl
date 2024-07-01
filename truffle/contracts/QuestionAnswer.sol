@@ -8,19 +8,19 @@ the IPFS file hashes as references.
 Also implements bounty system, reputation/points distribution, defines user profiles, tags, categories, 
 and achievement badges.
 */
+
+
 pragma solidity ^0.8.3;
 
 contract QuestionAnswer {
     struct Question {
         uint256 id;
-        string question;
-        string details;
         string ipfsHash;
         uint256 timestamp;
+        address author;
         uint256 views;
         uint256 bountyAmount;
         address[] bountyProposers;
-        mapping(address => Bounty) bounties;
     }
 
     struct Bounty {
@@ -35,7 +35,7 @@ contract QuestionAnswer {
         address author;
         uint256 timestamp;
         uint256 views;
-        uint256 likes;
+        uint256 upvoteCount;
     }
 
     struct User {
@@ -59,33 +59,44 @@ contract QuestionAnswer {
     mapping(address => User) public users;
     mapping(address => uint256[]) public userAnswers;
     mapping(uint256 => uint256[]) public questionAnswers;
+    mapping(uint256 => mapping(address => Bounty)) public questionBounties;
+    mapping(uint256 => mapping(address => bool)) public answerUpvotes;
+
+    uint256 public constant BOUNTY_DURATION = 2 weeks;
 
     // Events
-    event QuestionPosted(uint256 indexed questionId, string heading, string subheading, string ipfsHash, uint256 timestamp);
+    event QuestionPosted(uint256 indexed questionId, string ipfsHash, uint256 timestamp, address author);
     event AnswerPosted(uint256 indexed answerId, uint256 indexed questionId, string ipfsHash, address author, uint256 timestamp);
-    event AnswerLiked(uint256 indexed answerId, address indexed liker);
-    event BountyProposed(uint256 indexed questionId, address indexed proposer, uint256 amount);
-    event BountyClaimed(uint256 indexed questionId, uint256 indexed answerId, address indexed claimer, uint256 amount);
+    event AnswerUpdated(uint256 indexed answerId, string newIpfsHash, uint256 timestamp);
+    event AnswerUpvoted(uint256 indexed answerId, address indexed upvoter);
+    event BountyProposed(uint256 indexed questionId, address indexed proposer, address indexed recipient, uint256 amount);    event BountyClaimed(uint256 indexed questionId, uint256 indexed answerId, address indexed claimer, uint256 amount);
+    event BountyWithdrawn(uint256 indexed questionId, address indexed withdrawer, uint256 amount);
 
-    // Modifier to check if user exists
+    address public owner;
+
+    constructor() {
+        owner = msg.sender;
+        questionCount = 0;
+        answerCount = 0;
+    }
+
+    // Modifiers
     modifier userExists(address user) {
         require(users[user].userAddress != address(0), "User does not exist");
         _;
     }
 
-    // Modifier to check if question exists
     modifier questionExists(uint256 questionId) {
         require(questionId > 0 && questionId <= questionCount, "Question does not exist");
         _;
     }
 
-    // Modifier to check if answer exists
     modifier answerExists(uint256 answerId) {
         require(answerId > 0 && answerId <= answerCount, "Answer does not exist");
         _;
     }
 
-    // Function to register a new user
+    // Functions
     function registerUser(
         string memory name,
         string memory bio,
@@ -99,54 +110,40 @@ contract QuestionAnswer {
         users[msg.sender] = User(msg.sender, name, bio, twitterLink, websiteLink, profilePicture, username, occupation, 0, 0, block.timestamp);
     }
 
-    uint256 public constant BOUNTY_DURATION = 2 weeks;
-
-    // Function to post a new question
-   function postQuestion(string memory _question, string memory _details, string memory _ipfsHash) public {
-        questionCount++;
-        Question storage newQuestion = questions[questionCount];
-        newQuestion.id = questionCount;
-        newQuestion.question = _question;
-        newQuestion.details = _details;
-        newQuestion.ipfsHash = _ipfsHash;
-        newQuestion.timestamp = block.timestamp;
-        
-        emit QuestionPosted(questionCount, _question, _details, _ipfsHash, block.timestamp);
+    function postQuestion(string memory ipfsHash) public {
+        questionCount = questionCount + 1;
+        questions[questionCount] = Question(questionCount, ipfsHash, block.timestamp, msg.sender, 0, 0, new address[](0));
+        emit QuestionPosted(questionCount, ipfsHash, block.timestamp, msg.sender);
     }
 
-    // Functions to propose/withdraw a new bounty 
-    function proposeBounty(uint256 _questionId) public payable {
+    function proposeBounty(uint256 _questionId, address _recipient) public payable questionExists(_questionId) {
         require(msg.value > 0, "Bounty amount must be greater than 0");
-        Question storage question = questions[_questionId];
-        question.bountyAmount += msg.value;
-        question.bounties[msg.sender] = Bounty(msg.value, block.timestamp);
-        question.bountyProposers.push(msg.sender);
+        require(_recipient != address(0), "Invalid recipient address");
+        require(msg.sender != _recipient, "Cannot propose bounty to yourself");
         
-        emit BountyProposed(_questionId, msg.sender, msg.value);
+        questionBounties[_questionId][_recipient] = Bounty(msg.value, block.timestamp);
+        questions[_questionId].bountyAmount += msg.value;
+        questions[_questionId].bountyProposers.push(msg.sender);
+        
+        emit BountyProposed(_questionId, msg.sender, _recipient, msg.value);
     }
 
-    function withdrawBounty(uint256 _questionId) public {
-        Question storage question = questions[_questionId];
-        Bounty memory bounty = question.bounties[msg.sender];
+    function withdrawBounty(uint256 _questionId) public questionExists(_questionId) {
+        Bounty memory bounty = questionBounties[_questionId][msg.sender];
         require(bounty.amount > 0, "No bounty to withdraw");
         require(block.timestamp > bounty.proposedAt + BOUNTY_DURATION, "Bounty still active");
         
         uint256 amount = bounty.amount;
-        delete question.bounties[msg.sender];
-        question.bountyAmount -= amount;
+        delete questionBounties[_questionId][msg.sender];
+        questions[_questionId].bountyAmount -= amount;
         payable(msg.sender).transfer(amount);
         
         emit BountyWithdrawn(_questionId, msg.sender, amount);
     }
 
-    // Function to post a new answer
-    function postAnswer(
-        uint256 questionId,
-        string memory ipfsHash,
-        bool isDraft
-    ) public userExists(msg.sender) questionExists(questionId) {
+    function postAnswer(uint256 questionId, string memory ipfsHash) public questionExists(questionId) {
         answerCount++;
-        answers[answerCount] = Answer(answerCount, questionId, ipfsHash, msg.sender, block.timestamp, 0, 0, isDraft, questions[questionId].bountyAmount > 0);
+        answers[answerCount] = Answer(answerCount, questionId, ipfsHash, msg.sender, block.timestamp, 0, 0);
 
         userAnswers[msg.sender].push(answerCount);
         questionAnswers[questionId].push(answerCount);
@@ -154,54 +151,66 @@ contract QuestionAnswer {
         emit AnswerPosted(answerCount, questionId, ipfsHash, msg.sender, block.timestamp);
     }
 
-    // Function to like an answer
-    function likeAnswer(uint256 answerId) public userExists(msg.sender) answerExists(answerId) {
-        answers[answerId].likes++;
-        emit AnswerLiked(answerId, msg.sender);
+    function updateAnswer(uint256 answerId, string memory newIpfsHash) public answerExists(answerId) {
+        require(answers[answerId].author == msg.sender, "Only the author can update the answer");
+        answers[answerId].ipfsHash = newIpfsHash;
+        answers[answerId].timestamp = block.timestamp;
+        emit AnswerUpdated(answerId, newIpfsHash, block.timestamp);
     }
 
-    // Function to propose a bounty for a question
-    function proposeBounty(uint256 questionId, uint256 amount) public payable userExists(msg.sender) questionExists(questionId) {
-        require(msg.value == amount, "Amount mismatch with sent value");
-        Question storage q = questions[questionId];
-        q.bounties[msg.sender] += amount;
-        q.bountyAmount += amount;
-        q.bountyProposers.push(msg.sender);
-        emit BountyProposed(questionId, msg.sender, amount);
+    function upvoteAnswer(uint256 answerId) public userExists(msg.sender) answerExists(answerId) {
+        require(!answerUpvotes[answerId][msg.sender], "User has already upvoted this answer");
+        answerUpvotes[answerId][msg.sender] = true;
+        answers[answerId].upvoteCount++;
+        emit AnswerUpvoted(answerId, msg.sender);
     }
 
-    // Function to claim a bounty for an answered question
-    function claimBounty(uint256 questionId, uint256 answerId) public userExists(msg.sender) questionExists(questionId) answerExists(answerId) {
-        require(answers[answerId].author == msg.sender, "Only the author can claim the bounty");
+    function hasUpvoted(uint256 answerId, address user) public view returns (bool) {
+        return answerUpvotes[answerId][user];
+    }
+
+    function claimBounty(uint256 questionId, uint256 answerId) public {
+        require(answers[answerId].author == msg.sender, "Only the answer author can claim the bounty");
         require(answers[answerId].questionId == questionId, "Answer does not belong to the question");
-        require(answers[answerId].hasBounty, "No bounty associated with this answer");
+        
+        Bounty memory bounty = questionBounties[questionId][msg.sender];
+        require(bounty.amount > 0, "No bounty available for claiming");
 
-        uint256 totalBounty = questions[questionId].bountyAmount;
-        uint256 appFee = (totalBounty * 10) / 100;
-        uint256 authorAmount = totalBounty - appFee;
+        uint256 totalAmount = bounty.amount;
+        uint256 fee = totalAmount * 10 / 100; // 10% fee
+        uint256 authorAmount = totalAmount - fee;
 
-        // Transfer bounty to the author
+        // Reset the bounty
+        delete questionBounties[questionId][msg.sender];
+
+        // Transfer funds
         payable(msg.sender).transfer(authorAmount);
-        questions[questionId].bountyAmount = 0;
-        answers[answerId].hasBounty = false;
+        payable(owner).transfer(fee); // Send fee to contract owner
 
         emit BountyClaimed(questionId, answerId, msg.sender, authorAmount);
     }
 
-    // Function to update user points
     function updateUserPoints(address user, uint256 points) internal {
         users[user].points += points;
     }
 
-    // Function to update question views
     function updateQuestionViews(uint256 questionId) public questionExists(questionId) {
         questions[questionId].views++;
     }
 
-    // Function to update answer views
     function updateAnswerViews(uint256 answerId) public answerExists(answerId) {
         answers[answerId].views++;
     }
 
-    // Additional helper functions for fetching data can be added here
+    function getQuestionAnswers(uint256 questionId) public view returns (uint256[] memory) {
+        return questionAnswers[questionId];
+    }
+
+    function getAllQuestions() public view returns (Question[] memory) {
+        Question[] memory allQuestions = new Question[](questionCount);
+        for (uint256 i = 1; i <= questionCount; i++) {
+            allQuestions[i-1] = questions[i];
+        }
+        return allQuestions;
+    }
 }
